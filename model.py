@@ -1,4 +1,4 @@
-# Pseudocode for Wasserstein Barycenter-based Classifier Reconstruction
+
 
 # Input:
 # - X0: 300 samples from class 0 (shape: 300 x d)
