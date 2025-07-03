@@ -271,7 +271,7 @@ def compute_total_loss(Q0, Q1, P0, P1, Pcf, lambda_0=0.5, lambda_1=0.5, gamma=0.
 
 
 max_iters = 10
-lambda_0, lambda_1, gamma = 1.0, 1.0, 10.0
+
 
 Q0 = None
 Q1 = None
