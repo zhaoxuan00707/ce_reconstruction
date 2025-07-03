@@ -171,7 +171,7 @@ print("X0_scaled:", X0_scaled.shape)
 print("Q0:", samples_0.shape)
 
 
-def compute_barycenter(original_df, counterfactual_df, n_bary=30, weight_original=1.0, weight_cf=0.5):
+def compute_barycenter(original, counterfactual, n_bary=30, weight_original=1.0, weight_cf=0.5):
     """
     Compute the Wasserstein barycenter between original and counterfactual samples.
 
@@ -209,18 +209,18 @@ def compute_barycenter(original_df, counterfactual_df, n_bary=30, weight_origina
 
     # Uniform weights over samples
     measures_weights = [
-        np.ones(len(X0_scaled)) / len(X0_scaled),
-        np.ones(len(X1_scaled)) / len(X1_scaled)
+        np.ones(len(original)) / len(original),
+        np.ones(len(counterfactual)) / len(counterfactual)
     ]
 
     # Initialize barycenter support randomly
     np.random.seed(42)
-    d =original_df.shape[1]
+    d =original.shape[1]
     print('d',X0_scaled.shape)
     X_init = np.random.randn(n_bary, d)
 
     barycenter_support = ot.lp.free_support_barycenter(
-        measures_locations=[X0_scaled, X1_scaled],
+        measures_locations=[original, counterfactual],
         measures_weights=measures_weights,
         X_init=X_init,
         weights=weights,
@@ -234,30 +234,6 @@ def compute_barycenter(original_df, counterfactual_df, n_bary=30, weight_origina
 
 print(compute_barycenter(X0_scaled, Xcf_scaled).shape)
 
-
-def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0):
-    """
-    Predict label based on Wasserstein-2 distance to barycenters.
-
-    Args:
-        x (np.ndarray): Test sample of shape (d,)
-        barycenter_0 (np.ndarray): Support of class 0 barycenter
-        barycenter_1 (np.ndarray): Support of class 1 barycenter
-        tau (float): Margin threshold
-
-    Returns:
-        int: Predicted label (0 or 1)
-    """
-    w2_0 = np.min(np.linalg.norm(barycenter_0 - x, axis=1) ** 2)
-    w2_1 = np.min(np.linalg.norm(barycenter_1 - x, axis=1) ** 2)
-
-    if w2_0 < w2_1 - tau:
-        return 0
-    elif w2_1 < w2_0 - tau:
-        return 1
-    else:
-        return 0  # or return None for ambiguous
-    
 
 
 #Wasserstein-2 distance squared between support points and empirical samples ---
@@ -312,3 +288,29 @@ for iter in range(max_iters):
     loss = compute_total_loss(Q0, Q1,X0_scaled, X1_scaled, Xcf_scaled)
 
     print(f"Iteration {iter + 1}/{max_iters} - Loss: {loss:.4f}")
+
+
+
+
+def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0):
+    """
+    Predict label based on Wasserstein-2 distance to barycenters.
+
+    Args:
+        x (np.ndarray): Test sample of shape (d,)
+        barycenter_0 (np.ndarray): Support of class 0 barycenter
+        barycenter_1 (np.ndarray): Support of class 1 barycenter
+        tau (float): Margin threshold
+
+    Returns:
+        int: Predicted label (0 or 1)
+    """
+    w2_0 = np.min(np.linalg.norm(barycenter_0 - x, axis=1) ** 2)
+    w2_1 = np.min(np.linalg.norm(barycenter_1 - x, axis=1) ** 2)
+
+    if w2_0 < w2_1 - tau:
+        return 0
+    elif w2_1 < w2_0 - tau:
+        return 1
+    else:
+        return 0  # or return None for ambiguous
