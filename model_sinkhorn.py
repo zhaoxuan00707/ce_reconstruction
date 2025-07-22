@@ -236,7 +236,6 @@ Q0 = torch.randn(400, d, requires_grad=True)  # N0 points in d dimensions
 Q1 = torch.randn(400, d, requires_grad=True)
 
 # Assume P0, P1, Pcf are fixed tensors (data)
-# Define your regularizer, e.g. symmetry_reg(Q0, Q1)
 
 optimizer = torch.optim.Adam([Q0, Q1], lr=1e-2)
 
