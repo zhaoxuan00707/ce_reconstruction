@@ -283,7 +283,7 @@ import matplotlib.pyplot as plt
 
 losses = []
 
-for epoch in range(400):
+for epoch in range(200):
     optimizer.zero_grad()
     loss = compute_total_loss(Q0, Q1)
     loss.backward()
