@@ -335,7 +335,7 @@ def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0): #this def
 
     if w2_0 < w2_1 - tau:
         return 0
-    elif w2_1 < w2_0 - tau:
+    elif w2_1 <= w2_0 - tau:
         return 1
     else:
         return 'ambiguous'
