@@ -172,6 +172,7 @@ print("X1_scaled:", X1_scaled.shape)
 print("Xcf_scaled:", Xcf_scaled.shape)
 
 from geomloss import SamplesLoss
+from itertools import product
 
 
 sinkhorn_loss = SamplesLoss("sinkhorn", p=2, blur=0.05)
@@ -186,7 +187,7 @@ X0_scaled = torch.tensor(X0_scaled, dtype=torch.float32)
 X1_scaled = torch.tensor(X1_scaled, dtype=torch.float32)
 Xcf_scaled = torch.tensor(Xcf_scaled, dtype=torch.float32)
 
-def compute_lambda_c(P_cf, P_0, P_1,c):
+def compute_lambda_c(P_cf, P_0, P_1,c): #this def is from euqation 2 from method section
 
 
     P_c = P_0 if c == 0 else P_1
@@ -208,7 +209,7 @@ lambda_1=compute_lambda_c(Xcf_scaled,X0_scaled,X1_scaled,1 )
 
 
 
-def compute_total_loss(Q0, Q1, lambda_0=lambda_0, lambda_1=lambda_1, gamma=0.3):
+def compute_total_loss(Q0, Q1, lambda_0=lambda_0, lambda_1=lambda_1, gamma=0.1): #this def is from euqation 5 from method section
 
 
     w2_Q0_P0 = wasserstein2_squared(Q0, X0_scaled)
@@ -236,6 +237,7 @@ Q0 = torch.randn(400, d, requires_grad=True)  # N0 points in d dimensions
 Q1 = torch.randn(400, d, requires_grad=True)
 
 # Assume P0, P1, Pcf are fixed tensors (data)
+# Define your regularizer, e.g. symmetry_reg(Q0, Q1)
 
 optimizer = torch.optim.Adam([Q0, Q1], lr=1e-2)
 
@@ -265,3 +267,72 @@ plt.ylabel("Total Loss")
 plt.title("Loss vs. Epoch")
 plt.grid(True)
 plt.show()
+
+
+
+def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0): #this def is from euqation 3 from method section
+    """
+    Predict label based on Wasserstein-2 distance to barycenters.
+
+    Args:
+        x (np.ndarray): Test sample of shape (d,)
+        barycenter_0 (np.ndarray): Support of class 0 barycenter
+        barycenter_1 (np.ndarray): Support of class 1 barycenter
+        tau (float): Margin threshold
+
+    Returns:
+        int: Predicted label (0 or 1)
+    """
+    x_tensor = torch.tensor(x.reshape(1, -1), dtype=torch.float32)  # (1, d)
+    #q0_tensor = torch.tensor(barycenter_0, dtype=torch.float32)
+    #q1_tensor = torch.tensor(barycenter_1, dtype=torch.float32)
+
+    w2_0 = sinkhorn_loss(x_tensor, barycenter_0).item()
+    w2_1 = sinkhorn_loss(x_tensor, barycenter_1).item()
+
+    if w2_0 < w2_1 - tau:
+        return 0
+    elif w2_1 < w2_0 - tau:
+        return 1
+    else:
+        return 'ambiguous'
+    
+def evaluate_accuracy(X_test, Y_test, barycenter_0, barycenter_1):
+
+    predictions = [
+        predict_wasserstein_label(x, barycenter_0, barycenter_1)
+        for x in X_test
+    ]
+
+
+    predictions = np.array(predictions)
+    accuracy = np.mean(predictions == Y_test)
+    print(f"Accuracy: {accuracy:.4f}")
+    return accuracy
+
+
+print(evaluate_accuracy(X_test, y_test,Q0, Q1))
+
+y_orig = clf.predict(X_test)
+
+y_surrogate = np.array([
+    predict_wasserstein_label(x, Q0, Q1)
+    for x in X_test
+])
+
+def fidelity_score(y_orig, y_surrogate):
+    """
+    Compute fidelity between original and surrogate predictions.
+
+    Args:
+        y_orig (np.ndarray): Predictions from original model
+        y_surrogate (np.ndarray): Predictions from surrogate model
+
+    Returns:
+        float: Fidelity score
+    """
+    return np.mean(y_orig == y_surrogate)
+
+# Compute and print fidelity
+fidelity = fidelity_score(y_orig, y_surrogate)
+print(f"Fidelity Score: {fidelity:.4f}")
