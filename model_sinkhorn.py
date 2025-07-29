@@ -1,4 +1,5 @@
 import pandas as pd
+import random
 import numpy as np
 from torch.nn.functional import log_softmax
 import torch.nn as nn
@@ -21,6 +22,20 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
 import dice_ml
 from dice_ml import Dice
+
+
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    # For deterministic behavior in some torch operations (e.g., convolutions)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# Call it before any randomness
+set_seed(42)
 
 COLUMN_NAMES = [
     "age", "workclass", "fnlwgt", "education", "education-num",
@@ -77,6 +92,18 @@ clf = Pipeline(steps=[
 ])
 
 clf.fit(X_train, y_train)
+
+# Fit only on training data
+pipeline = Pipeline([
+    ('preprocessing', preprocessor),
+    ('dummy', 'passthrough')  # no classifier
+])
+
+#pipeline.fit(X_train)
+
+# Transform train and test
+X_train_processed = pipeline.transform(X_train)
+X_test_processed = pipeline.transform(X_test)
 
 data_dice = dice_ml.Data(
     dataframe=df,
@@ -146,26 +173,28 @@ import ot  # pip install POT
 
 
 
-common_cols = samples_0.columns.intersection(samples_1.columns).intersection(counterfactuals_df.columns)
+#common_cols = samples_0.columns.intersection(samples_1.columns).intersection(counterfactuals_df.columns)
 
-X0_vals = samples_0[common_cols]
-X1_vals = samples_1[common_cols]
-Xcf_vals = counterfactuals_df[common_cols]
+#X0_vals = samples_0[common_cols]
+#X1_vals = samples_1[common_cols]
+#Xcf_vals = counterfactuals_df[common_cols]
 
 # Concatenate all three
-combined = pd.concat([X0_vals, X1_vals, Xcf_vals], axis=0)
+#combined = pd.concat([X0_vals, X1_vals, Xcf_vals], axis=0)
 
 # One-hot encode categoricals (pandas get_dummies will handle all categorical columns)
-combined_encoded = pd.get_dummies(combined)
+#combined_encoded = pd.get_dummies(combined)
 
 # Standardize numeric columns after encoding
-scaler = StandardScaler()
-combined_scaled = scaler.fit_transform(combined_encoded)
+#scaler = StandardScaler()
+#combined_scaled = scaler.fit_transform(combined_encoded)
 
 # Split back to individual arrays
-X0_scaled = combined_scaled[:len(samples_0)]
-X1_scaled = combined_scaled[len(samples_0):len(samples_0)+len(samples_1)]
-Xcf_scaled = combined_scaled[len(samples_0)+len(samples_1):]
+X0_scaled = pipeline.transform(samples_0)
+X1_scaled = pipeline.transform(samples_1)
+
+
+Xcf_scaled = pipeline.transform(counterfactuals_df)
     
 print("X0_scaled:", X0_scaled.shape)
 print("X1_scaled:", X1_scaled.shape)
@@ -181,6 +210,14 @@ def wasserstein2_squared(X, Y):
 
     return sinkhorn_loss(X, Y)
 
+if hasattr(X0_scaled, "toarray"):
+    X0_scaled = X0_scaled.toarray()
+
+if hasattr(X1_scaled, "toarray"):
+    X1_scaled = X1_scaled.toarray()
+
+if hasattr(Xcf_scaled, "toarray"):
+    Xcf_scaled = Xcf_scaled.toarray()
 
 
 X0_scaled = torch.tensor(X0_scaled, dtype=torch.float32)
@@ -268,7 +305,7 @@ plt.title("Loss vs. Epoch")
 plt.grid(True)
 plt.show()
 
-
+from scipy.sparse import csr_matrix
 
 def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0): #this def is from euqation 3 from method section
     """
@@ -283,12 +320,18 @@ def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0): #this def
     Returns:
         int: Predicted label (0 or 1)
     """
-    x_tensor = torch.tensor(x.reshape(1, -1), dtype=torch.float32)  # (1, d)
+    if isinstance(x, csr_matrix):
+       x = x.toarray()
+
+    # Convert to torch tensor
+    x = torch.tensor(x.reshape(1, -1), dtype=torch.float32)
+    #x_tensor = torch.tensor(x.reshape(1, -1), dtype=torch.float32)  # (1, d)
     #q0_tensor = torch.tensor(barycenter_0, dtype=torch.float32)
     #q1_tensor = torch.tensor(barycenter_1, dtype=torch.float32)
-
-    w2_0 = sinkhorn_loss(x_tensor, barycenter_0).item()
-    w2_1 = sinkhorn_loss(x_tensor, barycenter_1).item()
+    #print(x.shape)
+    #print(barycenter_0.shape)
+    w2_0 = sinkhorn_loss(x, barycenter_0).item()
+    w2_1 = sinkhorn_loss(x, barycenter_1).item()
 
     if w2_0 < w2_1 - tau:
         return 0
@@ -297,11 +340,13 @@ def predict_wasserstein_label(x, barycenter_0, barycenter_1, tau=0.0): #this def
     else:
         return 'ambiguous'
     
-def evaluate_accuracy(X_test, Y_test, barycenter_0, barycenter_1):
+
+    
+def evaluate_accuracy(X_test_processed, Y_test, barycenter_0, barycenter_1):
 
     predictions = [
         predict_wasserstein_label(x, barycenter_0, barycenter_1)
-        for x in X_test
+        for x in X_test_processed
     ]
 
 
@@ -311,13 +356,13 @@ def evaluate_accuracy(X_test, Y_test, barycenter_0, barycenter_1):
     return accuracy
 
 
-print(evaluate_accuracy(X_test, y_test,Q0, Q1))
+print(evaluate_accuracy(X_test_processed, y_test,Q0, Q1))
 
 y_orig = clf.predict(X_test)
 
 y_surrogate = np.array([
     predict_wasserstein_label(x, Q0, Q1)
-    for x in X_test
+    for x in X_test_processed
 ])
 
 def fidelity_score(y_orig, y_surrogate):
