@@ -130,13 +130,13 @@ cf.visualize_as_dataframe()
 y_pred = clf.predict(X_test)
 
 # 2. Select 400 samples predicted as class 0
-pred_0_indices = X_test[y_pred == 0].index[:400]
+pred_0_indices = X_test[y_pred == 0].index[:50]
 samples_0 = X_test.loc[pred_0_indices]
 
 print(f"Selected {len(samples_0)} samples with predicted class 0.")
 
 # 3. Select 400 samples predicted as class 1
-pred_1_indices = X_test[y_pred == 1].index[:400]
+pred_1_indices = X_test[y_pred == 1].index[:50]
 samples_1 = X_test.loc[pred_1_indices]
 
 print(f"Selected {len(samples_1)} samples with predicted class 1.")
@@ -270,8 +270,8 @@ def compute_total_loss(Q0, Q1, lambda_0=lambda_0, lambda_1=lambda_1, gamma=0.1):
 d=X0_scaled.shape[1]
 
 # Initialize Q0, Q1 as tensors with gradients enabled
-Q0 = torch.randn(400, d, requires_grad=True)  # N0 points in d dimensions
-Q1 = torch.randn(400, d, requires_grad=True)
+Q0 = torch.randn(50, d, requires_grad=True)  # N0 points in d dimensions
+Q1 = torch.randn(50, d, requires_grad=True)
 
 # Assume P0, P1, Pcf are fixed tensors (data)
 # Define your regularizer, e.g. symmetry_reg(Q0, Q1)
