@@ -135,14 +135,14 @@ samples_0 = X_test.loc[pred_0_indices]
 
 print(f"Selected {len(samples_0)} samples with predicted class 0.")
 
-# 3. Select 400 samples predicted as class 1
+# 3. Select 50 samples predicted as class 1
 pred_1_indices = X_test[y_pred == 1].index[:50]
 samples_1 = X_test.loc[pred_1_indices]
 
 print(f"Selected {len(samples_1)} samples with predicted class 1.")
 
 
-# 4. generate 400 samples predicted as class 0 to counterfactuals
+# 4. generate 50 samples predicted as class 0 to counterfactuals
 all_cfs_dfs = []
 
 for i, instance in samples_0.iterrows():
