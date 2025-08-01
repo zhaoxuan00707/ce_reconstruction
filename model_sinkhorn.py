@@ -129,14 +129,14 @@ cf.visualize_as_dataframe()
 # 1. Predict on the entire test set
 y_pred = clf.predict(X_test)
 
-# 2. Select 400 samples predicted as class 0
-pred_0_indices = X_test[y_pred == 0].index[:50]
+# 2. Select 100 samples predicted as class 0
+pred_0_indices = X_test[y_pred == 0].index[:100]
 samples_0 = X_test.loc[pred_0_indices]
 
 print(f"Selected {len(samples_0)} samples with predicted class 0.")
 
-# 3. Select 50 samples predicted as class 1
-pred_1_indices = X_test[y_pred == 1].index[:50]
+# 3. Select 100 samples predicted as class 1
+pred_1_indices = X_test[y_pred == 1].index[:100]
 samples_1 = X_test.loc[pred_1_indices]
 
 print(f"Selected {len(samples_1)} samples with predicted class 1.")
